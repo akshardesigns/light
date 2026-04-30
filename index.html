@@ -72,7 +72,6 @@ select:focus{outline:none;border-color:var(--ink)}
 /* WHEEL */
 #wheel-wrap{
   position:relative;flex-shrink:0;user-select:none;touch-action:none;
-  /* width/height set by JS */
 }
 #disc-canvas{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);border-radius:50%;display:block;z-index:2;cursor:crosshair}
 #ring-canvas{position:absolute;top:0;left:0;display:block;z-index:1;pointer-events:none}
@@ -81,7 +80,7 @@ select:focus{outline:none;border-color:var(--ink)}
 .dot{position:absolute;border-radius:50%;border:2.5px solid white;box-shadow:0 2px 10px rgba(0,0,0,.6);transform:translate(-50%,-50%);cursor:grab;z-index:10;transition:box-shadow .15s,transform .15s;touch-action:none}
 .dot:hover{transform:translate(-50%,-50%) scale(1.25)}
 .dot.dragging{cursor:grabbing;transform:translate(-50%,-50%) scale(1.3)}
-.dot-disc{width:16px;height:16px;z-index:15}
+.dot-disc{width:11px;height:11px;z-index:2}
 .dot-disc.pdot{width:18px;height:18px;border-width:3px;z-index:20}
 .dot-ring{width:20px;height:20px;border-width:3px;z-index:20}
 
@@ -141,7 +140,10 @@ select:focus{outline:none;border-color:var(--ink)}
       </div>
       <span class="hdr-label">Mesin Keputusan Warna</span>
     </div>
-    <nav class="hdr-nav"><span>01 Input</span><span>02 Hasil</span></nav>
+    <div style="display:flex;align-items:center;gap:16px">
+      <nav class="hdr-nav"><span>01 Input</span><span>02 Hasil</span></nav>
+      <span style="font-size:10px;color:var(--muted)">By <a href="https://akshardesigns.id" target="_blank" style="color:var(--ink);text-decoration:none;font-weight:600;letter-spacing:.04em;border-bottom:1px solid var(--line);padding-bottom:1px;transition:border-color .2s" onmouseover="this.style.borderColor='var(--ink)'" onmouseout="this.style.borderColor='var(--line)'">Akshardesigns.id</a></span>
+    </div>
   </div>
 </header>
 
@@ -271,11 +273,21 @@ select:focus{outline:none;border-color:var(--ink)}
         <div style="border-top:1px solid var(--line);padding-top:16px">
           <p class="rt">Mengapa harmoni ini</p>
           <p id="reason-harmony" style="font-size:13px;line-height:1.75">—</p>
-          <div style="margin-top:16px">
+          <div style="margin-top:16px;display:flex;align-items:center;gap:16px;flex-wrap:wrap">
             <button id="regenerate-btn" style="font-size:13px;font-weight:500;background:none;border:none;cursor:pointer;color:var(--ink);display:inline-flex;align-items:center;gap:7px;font-family:inherit">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
               Buat ulang
             </button>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button id="dl-png-btn" style="font-size:13px;font-weight:500;background:none;border:none;cursor:pointer;color:var(--ink);display:inline-flex;align-items:center;gap:7px;font-family:inherit">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Unduh PNG
+              </button>
+              <button id="dl-svg-btn" style="font-size:13px;font-weight:500;background:none;border:none;cursor:pointer;color:var(--ink);display:inline-flex;align-items:center;gap:7px;font-family:inherit">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                Unduh SVG
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -380,16 +392,17 @@ function drawDisc(){
 
 /* ══════════════════════════════════════════════════════
    DRAW VALUE RING
-   top(270°/screen y-)=dark, bottom(90°/screen y+)=bright
-   val=(sin(angle_rad)+1)/2
+   deg=0 (atas, screen y-) → val=0 (gelap)
+   deg=180 (bawah, screen y+) → val=1 (terang)
+   formula: val = (1 - cos(deg)) / 2
 ══════════════════════════════════════════════════════ */
 function drawValueRing(hue,sat){
   const cv=document.getElementById('ring-canvas');
   const ctx=cv.getContext('2d');
   ctx.clearRect(0,0,WS,WS);
   for(let i=0;i<360;i++){
-    const a=i*Math.PI/180;
-    const val=(Math.sin(a)+1)/2;
+    const deg=i;
+    const val=(1-Math.cos(deg*Math.PI/180))/2;
     const a1=(i-90)*Math.PI/180,a2=(i-89)*Math.PI/180;
     ctx.beginPath();
     ctx.arc(CX,CY,RING_OUT,a1,a2);
@@ -417,8 +430,24 @@ function discPosToHS(px,py){
   const dx=px-DISC_R,dy=py-DISC_R;
   return{hue:((Math.atan2(dy,dx)*180/Math.PI)+90+360)%360,sat:Math.min(1,Math.sqrt(dx*dx+dy*dy)/DISC_R)};
 }
-function valToRingAngle(v){return(270+v*180)%360;}
-function ringAngleToVal(deg){return(Math.sin(deg*Math.PI/180)+1)/2;}
+
+/* ── RING ANGLE ────────────────────────────────────────
+   Ring draw: val = (1 - cos(deg)) / 2
+   deg=0 (atas) → val=0 (gelap), deg=180 (bawah) → val=1 (terang)
+
+   Dot posisi disimpan sebagai S.ringAngle (0–360° bebas).
+   val dihitung DARI angle, bukan sebaliknya → dot bisa muter full.
+═══════════════════════════════════════════════════════ */
+function ringAngleToVal(deg){
+  const d=((deg%360)+360)%360;
+  return (1-Math.cos(d*Math.PI/180))/2;
+}
+// valToInitAngle hanya untuk inisialisasi dari preset (val → sisi kanan ring, 0–180°)
+function valToInitAngle(v){
+  const clamped=Math.min(1,Math.max(0,v));
+  return Math.acos(1-2*clamped)*180/Math.PI;
+}
+
 function angleToRingPos(deg){
   const a=(deg-90)*Math.PI/180;
   return{x:CX+RING_MID*Math.cos(a),y:CY+RING_MID*Math.sin(a)};
@@ -447,7 +476,7 @@ const EXPLAIN={
 /* ══════════════════════════════════════════════════════
    STATE
 ══════════════════════════════════════════════════════ */
-const S={situation:null,harmony:null,primaryHue:0,primarySat:1,primaryVal:1,satOv:[null,null,null],valOv:[null,null,null],palette:null};
+const S={situation:null,harmony:null,primaryHue:0,primarySat:1,primaryVal:1,ringAngle:180,satOv:[null,null,null],valOv:[null,null,null],palette:null};
 
 /* ══════════════════════════════════════════════════════
    DOTS
@@ -462,7 +491,7 @@ function mkDot(type,primary){
   return d;
 }
 function placeRingDot(h,s,v){
-  const p=angleToRingPos(valToRingAngle(v));
+  const p=angleToRingPos(S.ringAngle);
   ringDot.style.left=p.x+'px';ringDot.style.top=p.y+'px';
   ringDot.style.background=hsvToHex(h,s,v);ringDot.style.display='block';
 }
@@ -638,7 +667,8 @@ document.getElementById('disc-canvas').addEventListener('mousedown',discHit);
 document.getElementById('disc-canvas').addEventListener('touchstart',discHit,{passive:false});
 
 function moveRing(wx,wy){
-  S.primaryVal=ringAngleToVal(posToRingAngle(wx,wy));
+  S.ringAngle=posToRingAngle(wx,wy);
+  S.primaryVal=ringAngleToVal(S.ringAngle);
   S.valOv=[null,null,null];
   updateWheel();
   if(S.palette){S.palette=genPalette();renderResults(false);}
@@ -674,7 +704,7 @@ function genPalette(){
 ══════════════════════════════════════════════════════ */
 document.getElementById('situation-select').addEventListener('change',e=>{
   S.situation=e.target.value||null;
-  if(S.situation){const sit=SITUASI[S.situation];S.primaryHue=sit.hue;S.primarySat=sit.sat;S.primaryVal=sit.val;S.satOv=[null,null,null];S.valOv=[null,null,null];}
+  if(S.situation){const sit=SITUASI[S.situation];S.primaryHue=sit.hue;S.primarySat=sit.sat;S.primaryVal=sit.val;S.ringAngle=valToInitAngle(sit.val);S.satOv=[null,null,null];S.valOv=[null,null,null];}
   checkReady();updateWheel();
 });
 document.getElementById('harmony-select').addEventListener('change',e=>{
@@ -745,8 +775,149 @@ function copyHex(hex){
 }
 
 /* ══════════════════════════════════════════════════════
-   RESIZE
+   DOWNLOAD PALETTE
 ══════════════════════════════════════════════════════ */
+function buildPaletteCanvas(){
+  const p=S.palette;
+  if(!p)return null;
+  const W=900,H=420,PAD=40,CARD_R=12;
+  const cv=document.createElement('canvas');
+  cv.width=W;cv.height=H;
+  const ctx=cv.getContext('2d');
+
+  // bg
+  ctx.fillStyle='#fafaf7';
+  ctx.fillRect(0,0,W,H);
+
+  const roles=p.mono
+    ?[{key:'primary',label:'Primer',pct:'60%',sub:'Gelap'},
+      {key:'secondary',label:'Sekunder',pct:'30%',sub:'Sedang'},
+      {key:'accent',label:'Aksen',pct:'10%',sub:'Terang'}]
+    :[{key:'primary',label:'Primer',pct:'60%',sub:'Dominan'},
+      {key:'secondary',label:'Sekunder',pct:'30%',sub:'Pendukung'},
+      {key:'accent',label:'Aksen',pct:'10%',sub:'Sorotan'}];
+
+  const cols=3;
+  const swW=Math.floor((W-PAD*2-(cols-1)*20)/cols);
+  const swH=220;
+
+  // draw swatches
+  roles.forEach((r,i)=>{
+    const x=PAD+i*(swW+20);
+    const y=PAD;
+    const hex=p[r.key];
+
+    // swatch rounded rect
+    ctx.beginPath();
+    ctx.roundRect(x,y,swW,swH,CARD_R);
+    ctx.fillStyle=hex;
+    ctx.fill();
+
+    // subtle inner border
+    ctx.beginPath();
+    ctx.roundRect(x,y,swW,swH,CARD_R);
+    ctx.strokeStyle='rgba(0,0,0,0.06)';
+    ctx.lineWidth=1;
+    ctx.stroke();
+
+    // label area bg
+    const lblY=y+swH+12;
+    ctx.fillStyle='#0a0a0a';
+    ctx.font='bold 11px -apple-system,sans-serif';
+    ctx.letterSpacing='1px';
+    ctx.fillText(r.label.toUpperCase(),x,lblY+14);
+
+    ctx.fillStyle='#6b6b6b';
+    ctx.font='12px monospace';
+    ctx.letterSpacing='0px';
+    ctx.fillText(hex.toUpperCase(),x,lblY+34);
+
+    ctx.fillStyle='#6b6b6b';
+    ctx.font='11px -apple-system,sans-serif';
+    ctx.fillText(r.pct+' · '+r.sub,x,lblY+54);
+  });
+
+  // proportion bar
+  const barY=H-48;const barH=10;const barW=W-PAD*2;
+  ctx.beginPath();ctx.roundRect(PAD,barY,barW*0.6,barH,4);
+  ctx.fillStyle=p.primary;ctx.fill();
+  ctx.beginPath();ctx.roundRect(PAD+barW*0.6+3,barY,barW*0.3,barH,4);
+  ctx.fillStyle=p.secondary;ctx.fill();
+  ctx.beginPath();ctx.roundRect(PAD+barW*0.9+6,barY,barW*0.1,barH,4);
+  ctx.fillStyle=p.accent;ctx.fill();
+
+  // footer text
+  ctx.fillStyle='#aaa';
+  ctx.font='10px -apple-system,sans-serif';
+  ctx.fillText('Mesin Keputusan Warna · Akshardesigns.id',PAD,H-18);
+
+  return cv;
+}
+
+document.getElementById('dl-png-btn').addEventListener('click',()=>{
+  const cv=buildPaletteCanvas();
+  if(!cv)return;
+  const a=document.createElement('a');
+  a.download='palette-akshardesigns.png';
+  a.href=cv.toDataURL('image/png');
+  a.click();
+  const toast=document.getElementById('toast');
+  toast.textContent='PNG diunduh';toast.classList.add('show');
+  clearTimeout(window._tt);window._tt=setTimeout(()=>toast.classList.remove('show'),1600);
+});
+
+document.getElementById('dl-svg-btn').addEventListener('click',()=>{
+  const p=S.palette;if(!p)return;
+  const W=900,H=420,PAD=40,CARD_R=12;
+  const cols=3;
+  const swW=Math.floor((W-PAD*2-40)/cols);
+  const swH=220;
+
+  const roles=p.mono
+    ?[{key:'primary',label:'PRIMER',pct:'60%',sub:'Gelap'},
+      {key:'secondary',label:'SEKUNDER',pct:'30%',sub:'Sedang'},
+      {key:'accent',label:'AKSEN',pct:'10%',sub:'Terang'}]
+    :[{key:'primary',label:'PRIMER',pct:'60%',sub:'Dominan'},
+      {key:'secondary',label:'SEKUNDER',pct:'30%',sub:'Pendukung'},
+      {key:'accent',label:'AKSEN',pct:'10%',sub:'Sorotan'}];
+
+  const swatches=roles.map((r,i)=>{
+    const x=PAD+i*(swW+20);
+    const hex=p[r.key];
+    const lblY=PAD+swH+12;
+    return`<rect x="${x}" y="${PAD}" width="${swW}" height="${swH}" rx="${CARD_R}" fill="${hex}"/>
+<rect x="${x}" y="${PAD}" width="${swW}" height="${swH}" rx="${CARD_R}" fill="none" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
+<text x="${x}" y="${lblY+14}" font-family="-apple-system,sans-serif" font-size="11" font-weight="700" letter-spacing="1" fill="#0a0a0a">${r.label}</text>
+<text x="${x}" y="${lblY+34}" font-family="monospace" font-size="12" fill="#6b6b6b">${hex.toUpperCase()}</text>
+<text x="${x}" y="${lblY+54}" font-family="-apple-system,sans-serif" font-size="11" fill="#6b6b6b">${r.pct} · ${r.sub}</text>`;
+  }).join('\n');
+
+  const barY=H-48,barH=10,barW=W-PAD*2;
+  const bars=`
+<rect x="${PAD}" y="${barY}" width="${barW*0.6}" height="${barH}" rx="4" fill="${p.primary}"/>
+<rect x="${PAD+barW*0.6+3}" y="${barY}" width="${barW*0.3}" height="${barH}" rx="4" fill="${p.secondary}"/>
+<rect x="${PAD+barW*0.9+6}" y="${barY}" width="${barW*0.1}" height="${barH}" rx="4" fill="${p.accent}"/>`;
+
+  const svg=`<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">
+<rect width="${W}" height="${H}" fill="#fafaf7"/>
+${swatches}
+${bars}
+<text x="${PAD}" y="${H-18}" font-family="-apple-system,sans-serif" font-size="10" fill="#aaa">Mesin Keputusan Warna · Akshardesigns.id</text>
+</svg>`;
+
+  const blob=new Blob([svg],{type:'image/svg+xml'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.download='palette-akshardesigns.svg';
+  a.href=url;a.click();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+  const toast=document.getElementById('toast');
+  toast.textContent='SVG diunduh';toast.classList.add('show');
+  clearTimeout(window._tt);window._tt=setTimeout(()=>toast.classList.remove('show'),1600);
+});
+
+
 let _rt;
 window.addEventListener('resize',()=>{
   clearTimeout(_rt);
@@ -756,7 +927,6 @@ window.addEventListener('resize',()=>{
 /* ══════════════════════════════════════════════════════
    INIT
 ══════════════════════════════════════════════════════ */
-// Wait one frame so layout is complete before measuring
 requestAnimationFrame(()=>{
   applyWheelSize();
   drawDisc();
